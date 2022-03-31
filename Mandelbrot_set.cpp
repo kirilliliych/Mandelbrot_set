@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 
@@ -14,7 +15,7 @@ struct picture
     sf::Sprite  sprite;
     float x_shift = -0.2;
     float y_shift = 0;
-    float scale = 3;
+    float scale   = 3;
 };
 
 struct FPS
@@ -30,24 +31,22 @@ struct FPS
     char fps_str[FPS_STR_MAX_SIZE] = "FPS: 000.0";
 };
 
-struct complex_number
-{
-    float real_part = 0;
-    float imag_part = 0;
-};
 
-const int HEIGHT          = 600;
 const int WIDTH           = 800;
+const int HEIGHT          = 600;
+
+const float DX = 1 / 800.f;
+const float DY = 1 / 600.f;
 
 const int MAX_ITERATION   = 256;
 
-const double MAX_R2       = 10;
+const float MAX_R2        = 10.f;
 
-const unsigned int BLACK  = 0xFF000000;
-const unsigned int BLUE   = 0xFFFF0000;
-const unsigned int GREEN  = 0xFF00FF00;
-const unsigned int RED    = 0xFF0000FF;
-const unsigned int WHITE  = 0xFFFFFFFF;
+const unsigned BLACK  = 0xFF000000;
+const unsigned BLUE   = 0xFFFF0000;
+const unsigned GREEN  = 0xFF00FF00;
+const unsigned RED    = 0xFF0000FF;
+const unsigned WHITE  = 0xFFFFFFFF;
 
 void RenewFPS(FPS *fps_struct)
 {
@@ -64,45 +63,67 @@ void RenewFPS(FPS *fps_struct)
     fps_struct->prev_time = fps_struct->cur_time;
 }
 
-void CountMandelbrot(unsigned int *pixels, picture *set)
+void SetPixel(unsigned *pixels, int x_pos, int y_pos, int iter_quantity)
 {
+    assert(pixels != nullptr);
+
+    /if (iter_quantity == MAX_ITERATION)
+    {
+        *(pixels + (y_pos * WIDTH + x_pos)) = BLACK;
+    }
+    else
+    {
+        *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned) + 0) = 100 * (1 + sin(iter_quantity + 0));
+        *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned) + 1) = 100 * (1 + sin(iter_quantity + 2));
+        *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned) + 2) = 100 * (1 + sin(iter_quantity + 4));
+        *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned) + 3) = 0xFF;
+    }
+}
+
+void CountMandelbrot(unsigned *pixels, picture *set)
+{
+    assert(pixels != nullptr);
+    assert(set    != nullptr);
+
     for (int y_pos = 0; y_pos < HEIGHT; ++y_pos)
     {
-        for (int x_pos = 0; x_pos < WIDTH; ++x_pos)
+        for (int x_pos = 0; x_pos < WIDTH; x_pos += 8)
         {
-            complex_number original_number = {(((float) x_pos - WIDTH / 2) / WIDTH + set->x_shift) * set->scale, (((float) y_pos - HEIGHT / 2) / HEIGHT + set->y_shift) * set->scale};
-            complex_number moving_number = original_number;
+            float orig_x = (((float) x_pos - WIDTH  / 2) * DX + set->x_shift) * set->scale;
+            float orig_y = (((float) y_pos - HEIGHT / 2) * DY + set->y_shift) * set->scale;
 
-            size_t iteration = 0;
-            float r2 = 0;
+            float orig_x_arr[8] = {orig_x, orig_x + DX, orig_x + 2 * DX, orig_x + 3 * DX, orig_x + 4 * DX, orig_x + 5 * DX, orig_x + 6 * DX, orig_x + 7 * DX};
+            float orig_y_arr[8] = {orig_y, orig_y,      orig_y,          orig_y,          orig_y,          orig_y,          orig_y,          orig_y         };
 
-            for (iteration; (iteration < MAX_ITERATION) && (r2 < MAX_R2); ++iteration)
+            float cur_x_arr[8] = {}; for (int i = 0; i < 8; ++i) cur_x_arr[i] = orig_x_arr[i];
+            float cur_y_arr[8] = {}; for (int i = 0; i < 8; ++i) cur_y_arr[i] = orig_y_arr[i];
+
+            int iter_quantity[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+            for (int iter = 0; iter < MAX_ITERATION; ++iter)
             {
-                r2 = moving_number.real_part * moving_number.real_part + moving_number.imag_part * moving_number.imag_part;
-            
-                float new_real_part = moving_number.real_part * moving_number.real_part  - 
-                                      moving_number.imag_part * moving_number.imag_part  + original_number.real_part;
+                float x2[8] = {}; for (int i = 0; i < 8; ++i) x2[i] = cur_x_arr[i] * cur_x_arr[i];
+                float y2[8] = {}; for (int i = 0; i < 8; ++i) y2[i] = cur_y_arr[i] * cur_y_arr[i];
+                float xy[8] = {}; for (int i = 0; i < 8; ++i) xy[i] = cur_x_arr[i] * cur_y_arr[i];
 
-                float new_img_part  = 2 * moving_number.real_part * moving_number.imag_part  + original_number.imag_part;
+                float r2[8] = {}; for (int i = 0; i < 8; ++i) r2[i] = x2[i] + y2[i];
 
-                moving_number.real_part = new_real_part;
-                moving_number.imag_part = new_img_part;
+                int if_point_in[8] = {};
+                for (int i = 0; i < 8; ++i) if (r2[i] < MAX_R2) if_point_in[i] = 1;
+
+                int iter_mask = 0;
+                for (int i = 0; i < 8; ++i) iter_mask |= (if_point_in[i] << i);
+                if (!iter_mask) break;
+                
+                for (int i = 0; i < 8; ++i) iter_quantity[i] += if_point_in[i];
+
+                for (int i = 0; i < 8; ++i) cur_x_arr[i] = x2[i] - y2[i] + orig_x_arr[i];
+                for (int i = 0; i < 8; ++i) cur_y_arr[i] = xy[i] + xy[i] + orig_y_arr[i];
             }
-            if (iteration == MAX_ITERATION)
-            {
-                *(pixels + (y_pos * WIDTH + x_pos)) = BLACK;
-            }
-            else
-            {
-                /**(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int))     = 7 * iteration;
-                *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int) + 1) = 128 + 15 * iteration;
-                *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int) + 2) = 255 - 3 * iteration;
-                *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int) + 3) = 0xFF;*/
 
-                *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int))     = 100 * (1 + sin(iteration + 0));
-                *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int) + 1) = 100 * (1 + sin(iteration + 2));
-                *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int) + 2) = 100 * (1 + sin(iteration + 4));
-                *(((unsigned char *) pixels) + (y_pos * WIDTH + x_pos) * sizeof(unsigned int) + 3) = 0xFF;
+            for (int i = 0; i < 8; ++i)
+            {
+                SetPixel(pixels, x_pos + i, y_pos, iter_quantity[i]);
             }
         }
     }
@@ -111,16 +132,15 @@ void CountMandelbrot(unsigned int *pixels, picture *set)
 
 int main()
 {
-    unsigned int *pixels = (unsigned int *) calloc(WIDTH * HEIGHT, sizeof(unsigned int));
-
-    picture set;
+    unsigned *pixels = (unsigned *) calloc(WIDTH * HEIGHT, sizeof(unsigned));
 
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Mandelbrot_set", sf::Style::Default);     
     
+    picture set;
     set.image.create(WIDTH, HEIGHT, (const uint8_t *) pixels);
     if (!set.texture.loadFromImage(set.image))
     {
-        printf("Error: can't load texture");
+        printf("Error: can't load texture\n");
     }
     set.sprite.setTexture(set.texture);
 
@@ -134,7 +154,6 @@ int main()
     fps.text.setFont(fps.font);
     fps.text.setCharacterSize(30);
     fps.text.setFillColor(sf::Color::Green);
-
 
     while (window.isOpen())
     {
@@ -193,7 +212,7 @@ int main()
         }
 
         RenewFPS(&fps);
-
+        
         window.clear();
 
         window.draw(set.sprite);
