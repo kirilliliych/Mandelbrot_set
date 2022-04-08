@@ -1,0 +1,4 @@
+all:
+	clear
+	g++ Mandelbrot_set_no_SSE.cpp -mavx2 -O3 -o mandelbrot -lsfml-graphics -lsfml-window -lsfml-audio -lsfml-system
+	./mandelbrot

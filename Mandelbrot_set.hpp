@@ -39,9 +39,9 @@ struct picture
 {
     sf::Texture texture; 
     sf::Sprite  sprite;
-    float x_shift = -0.2;
+    float x_shift = 0;
     float y_shift = 0;
-    float scale   = 3;
+    float scale   = 1;
 };
 
 struct FPS
@@ -49,12 +49,18 @@ struct FPS
     sf::Font font;
     sf::Text text;
 
-    clock_t cur_time  = clock();
-    clock_t prev_time = 0;
+    sf::Clock clock;
+    sf::Time  cur_time   = clock.getElapsedTime();
 
-    clock_t FPS_delay = CLOCKS_PER_SEC / 100;
+    sf::Clock delay_clock;
+    sf::Time  delay_time = delay_clock.getElapsedTime();
 
-    char fps_str[FPS_STR_MAX_SIZE] = "FPS: 000.0";
+    float FPS_delay = 0.2f;
+
+    double FPS_sum    = 0;
+    int frames_saved  = 0;
+
+    char fps_str[FPS_STR_MAX_SIZE] = "FPS: 0000.00\n";
 };
 
 int  InitParameters(picture *set, FPS *fps);
