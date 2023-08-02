@@ -8,9 +8,9 @@ displaying the result on the screen.
 
 ***
 ## Why is the project useful
-The goal is to train to optimize program using intrinsics (also SIMD instructions, SSE) and to see how the performance grows with this usage (FPS counter
-is drawn at the top left corner of the window). Therefore, two versions of program were written: one without intrinsics and one with them.
-If drawing mode is not chosen then FPS counter is being outputted to the console.
+The goal is to train to optimize program using [SIMD instructions](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data) (also intrinsics, SSE)
+and to see how the performance grows with this usage (FPS counter is drawn at the top left corner of the window). Therefore, two versions of program were written:
+one without intrinsics and one with them. If drawing mode is not chosen then FPS counter is being outputted to the console.
 
 ***
 ## How to launch
